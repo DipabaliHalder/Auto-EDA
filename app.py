@@ -36,8 +36,8 @@ def main():
     if uploaded_file is not None:
         df = load_data(uploaded_file)
         if df is not None:
-            options = st.sidebar.radio("Select a section:", ["Dataset Info", "Missing & Duplicate Value Check", "Summary Statistics", "Univariate Analysis", "Bivariate Analysis", "Correlation Analysis", "Feature Importance", "Word Cloud", "3D Scatter Plot"])
-            
+            options = st.sidebar.radio("Select the option:", ["Dataset Info", "Missing & Duplicate Value Check", "Summary Statistics", "Univariate Analysis", "Bivariate Analysis", "Correlation Analysis", "Feature Importance", "Word Cloud", "3D Scatter Plot"])
+
             # Call the respective function based on the selected option
             if options == "Dataset Info":
                 data_overview(df)
@@ -98,38 +98,50 @@ def data_overview(df):
     
 
 
+import streamlit as st
+import pandas as pd
+import plotly.express as px
+
 # Missing & Duplicate Value Check
 def missdup_check(df):
-    # Calculate the missing values matrix
     st.header("Missing & Duplicate Value Check")
+
+    # Calculate the missing values matrix
     missing_values_matrix = df.isnull().sum().reset_index()
     missing_values_matrix.columns = ['Column', 'Missing Values']
 
-    st.subheader('Missing Values Matrix')
-    # Display the missing values matrix
-    st.dataframe(missing_values_matrix)
-
     # Check if there are missing values
     if missing_values_matrix['Missing Values'].any():
-        # Create a bar plot to visualize the missing values
-        fig, ax = plt.subplots(figsize=(10, 4))
-        ax.bar(missing_values_matrix['Column'], missing_values_matrix['Missing Values'],color='#87CEEB')
-        ax.set_xlabel('Column Name')
-        ax.set_xticklabels(missing_values_matrix['Column'], rotation=90)
-        ax.set_ylabel('Count of Missing Values')
-        ax.set_title('Missing Values in the Dataset')
-        # Display the bar plot
-        st.pyplot(fig)
+        # Create columns for side-by-side display
+        col1, col2 = st.columns(2)
+
+        with col1:
+            st.subheader("Missing Value Bar Plot")
+            # Create a bar plot to visualize the missing values
+            fig = px.bar(missing_values_matrix, x='Column', y='Missing Values', 
+                          title='Missing Values in the Dataset', 
+                          color_discrete_sequence=['#d6664d'])
+            fig.update_layout(xaxis_title='Column Name', 
+                              yaxis_title='Count of Missing Values', 
+                              xaxis_tickangle=90)
+            # Display the bar plot
+            st.plotly_chart(fig, use_container_width=True)
+
+        with col2:
+            st.subheader("Missing Values Summary")
+            # Display the missing values matrix in the second column
+            st.write(missing_values_matrix)
     else:
-        st.write('There are no missing values in the dataset.')
-    
-        # Check for duplicate rows
+        st.subheader('There are no missing values in the dataset.')
+        st.write(missing_values_matrix)
+
+    # Check for duplicate rows
     duplicate_rows = df.duplicated().sum()
 
     # Display the duplicate rows
     if duplicate_rows > 0:
         st.subheader('Duplicate Rows:')
-        st.dataframe(df[df.duplicated()])
+        st.write(df[df.duplicated()])
     else:
         st.subheader('No duplicate entries.')
     
@@ -240,7 +252,7 @@ def bivariate_analysis(df):
 
             if x_col!=None and y_col!=None:
                 fig, ax = plt.subplots()
-                sns.scatterplot(data=df, x=x_col, y=y_col, ax=ax, color='purple', alpha=0.6,legend=False)
+                sns.scatterplot(data=df, x=x_col, y=y_col, ax=ax, alpha=0.6,legend=False)
                 ax.set_title(f"Scatter Plot: {x_col} vs {y_col}")
                 ax.set_xlabel(x_col)
                 ax.set_ylabel(y_col)
@@ -336,49 +348,52 @@ def feature_importance(df):
     if len(numeric_columns) > 0:
         target_column = st.selectbox("Select the target variable:", numeric_columns,index=None)
         if target_column!=None:
-            feature_columns = [col for col in numeric_columns if col != target_column]
-            
-            if categorical_columns.size > 0:
-                st.write("Categorical columns will be encoded for feature importance calculation.")
-            
-            # Prepare the data
-            X = df[feature_columns]
-            y = df[target_column]
-            
-            # Encode categorical variables
-            for col in categorical_columns:
-                le = LabelEncoder()
-                X[col] = le.fit_transform(df[col].astype(str))
-            
-            # Train a Random Forest model
-            if len(np.unique(y)) > 10:  # Regression task
-                model = RandomForestRegressor(n_estimators=100, random_state=42)
-            else:  # Classification task
-                model = RandomForestClassifier(n_estimators=100, random_state=42)
-            
-            model.fit(X, y)
-            
-            # Get feature importances
-            importances = model.feature_importances_
-            feature_imp = pd.DataFrame({'feature': X.columns, 'importance': importances})
-            feature_imp = feature_imp.sort_values('importance', ascending=False)
-            
-            # Plot feature importances
-            fig, ax = plt.subplots(figsize=(10, 6))
-            sns.barplot(x='importance', y='feature', data=feature_imp, ax=ax, palette='rocket')
-            ax.set_title("Feature Importance")
-            ax.set_xlabel("Importance")
-            ax.set_ylabel("Feature")
-            st.pyplot(fig)
-            
-            
-            st.write("Feature Importance Table:")
-            st.write(feature_imp)
-            
-            st.write("Insights:")
-            st.write(f"The most important feature is '{feature_imp.iloc[0]['feature']}' with an importance of {feature_imp.iloc[0]['importance']:.4f}.")
-            st.write(f"The least important feature is '{feature_imp.iloc[-1]['feature']}' with an importance of {feature_imp.iloc[-1]['importance']:.4f}.")
-            st.write("Consider focusing on the top features for model development or further analysis.")
+            try:
+                feature_columns = [col for col in numeric_columns if col != target_column]
+                
+                if categorical_columns.size > 0:
+                    st.write("Categorical columns will be encoded for feature importance calculation.")
+                
+                # Prepare the data
+                X = df[feature_columns]
+                y = df[target_column]
+                
+                # Encode categorical variables
+                for col in categorical_columns:
+                    le = LabelEncoder()
+                    X[col] = le.fit_transform(df[col].astype(str))
+                
+                # Train a Random Forest model
+                if len(np.unique(y)) > 10:  # Regression task
+                    model = RandomForestRegressor(n_estimators=100, random_state=42)
+                else:  # Classification task
+                    model = RandomForestClassifier(n_estimators=100, random_state=42)
+                
+                model.fit(X, y)
+                
+                # Get feature importances
+                importances = model.feature_importances_
+                feature_imp = pd.DataFrame({'feature': X.columns, 'importance': importances})
+                feature_imp = feature_imp.sort_values('importance', ascending=False)
+                
+                # Plot feature importances
+                fig, ax = plt.subplots(figsize=(10, 6))
+                sns.barplot(x='importance', y='feature', data=feature_imp, ax=ax, palette='rocket')
+                ax.set_title("Feature Importance")
+                ax.set_xlabel("Importance")
+                ax.set_ylabel("Feature")
+                st.pyplot(fig)
+                
+                
+                st.write("Feature Importance Table:")
+                st.write(feature_imp)
+                
+                st.write("Insights:")
+                st.write(f"The most important feature is '{feature_imp.iloc[0]['feature']}' with an importance of {feature_imp.iloc[0]['importance']:.4f}.")
+                st.write(f"The least important feature is '{feature_imp.iloc[-1]['feature']}' with an importance of {feature_imp.iloc[-1]['importance']:.4f}.")
+                st.write("Consider focusing on the top features for model development or further analysis.")
+            except Exception as e:
+                st.warning(e)
     else:
         st.warning("Insufficient numeric columns for feature importance analysis.")
 
