@@ -415,160 +415,163 @@ def scatter_3d(df):
     st.plotly_chart(fig, use_container_width=True)    
 
 def pca_and_clustering(df):
-    st.header("PCA and Clustering Analysis")
-    
-    numeric_columns = df.select_dtypes(include=[np.number]).columns
-    if len(numeric_columns) < 3:
-        st.warning("Insufficient numeric columns for PCA and clustering analysis. Please ensure you have at least three numeric columns.")
-        return
+    try:
+        st.header("PCA and Clustering Analysis")
+        
+        numeric_columns = df.select_dtypes(include=[np.number]).columns
+        if len(numeric_columns) < 3:
+            st.warning("Insufficient numeric columns for PCA and clustering analysis. Please ensure you have at least three numeric columns.")
+            return
 
-    st.markdown("**Feature Selection**")
-    selected_features = st.multiselect("Select features for analysis:", numeric_columns, default=list(numeric_columns)[:3])
-    
-    if len(selected_features) < 3:
-        st.warning("Please select at least three features for PCA and clustering analysis.")
-        return
+        st.markdown("**Feature Selection**")
+        selected_features = st.multiselect("Select features for analysis:", numeric_columns, default=list(numeric_columns)[:3])
+        
+        if len(selected_features) < 3:
+            st.warning("Please select at least three features for PCA and clustering analysis.")
+            return
 
-    X = df[selected_features].values
-    scaler = StandardScaler()
-    X_scaled = scaler.fit_transform(X)
+        X = df[selected_features].values
+        scaler = StandardScaler()
+        X_scaled = scaler.fit_transform(X)
 
-    # PCA
-    pca = PCA()
-    X_pca = pca.fit_transform(X_scaled)
+        # PCA
+        pca = PCA()
+        X_pca = pca.fit_transform(X_scaled)
 
-    # Explained variance ratio
-    explained_variance_ratio = pca.explained_variance_ratio_
-    cumulative_variance_ratio = np.cumsum(explained_variance_ratio)
+        # Explained variance ratio
+        explained_variance_ratio = pca.explained_variance_ratio_
+        cumulative_variance_ratio = np.cumsum(explained_variance_ratio)
 
-    # Plot explained variance ratio
-    fig_var = go.Figure()
-    fig_var.add_trace(go.Bar(x=list(range(1, len(explained_variance_ratio) + 1)),
-                             y=explained_variance_ratio,
-                             name='Individual',
-                             marker_color='rgba(255, 75, 75, 0.7)'))  # Streamlit red with transparency
-    fig_var.add_trace(go.Scatter(x=list(range(1, len(cumulative_variance_ratio) + 1)),
-                                 y=cumulative_variance_ratio,
-                                 name='Cumulative',
-                                 line=dict(color='rgb(255, 0, 0)')))  # Solid Streamlit red
-    fig_var.update_layout(title='Explained Variance Ratio',
-                          xaxis_title='Principal Components',
-                          yaxis_title='Explained Variance Ratio')
-    st.plotly_chart(fig_var)
+        # Plot explained variance ratio
+        fig_var = go.Figure()
+        fig_var.add_trace(go.Bar(x=list(range(1, len(explained_variance_ratio) + 1)),
+                                y=explained_variance_ratio,
+                                name='Individual',
+                                marker_color='rgba(255, 75, 75, 0.7)'))  # Streamlit red with transparency
+        fig_var.add_trace(go.Scatter(x=list(range(1, len(cumulative_variance_ratio) + 1)),
+                                    y=cumulative_variance_ratio,
+                                    name='Cumulative',
+                                    line=dict(color='rgb(255, 0, 0)')))  # Solid Streamlit red
+        fig_var.update_layout(title='Explained Variance Ratio',
+                            xaxis_title='Principal Components',
+                            yaxis_title='Explained Variance Ratio')
+        st.plotly_chart(fig_var)
 
-    # PCA Insights
-    st.subheader("PCA Insights:")
-    st.write("The explained variance ratio tells us how much of the original information in our dataset is captured by each principal component.")
-    st.write(f"1. The first principal component explains {explained_variance_ratio[0]:.2%} of the total variance in the data.")
-    st.write(f"2. To capture 80% of the variance in the data, we need {np.argmax(cumulative_variance_ratio >= 0.8) + 1} principal components.")
-    st.write(f"3. To capture 95% of the variance, we need {np.argmax(cumulative_variance_ratio >= 0.95) + 1} principal components.")
+        # PCA Insights
+        st.subheader("PCA Insights:")
+        st.write("The explained variance ratio tells us how much of the original information in our dataset is captured by each principal component.")
+        st.write(f"1. The first principal component explains {explained_variance_ratio[0]:.2%} of the total variance in the data.")
+        st.write(f"2. To capture 80% of the variance in the data, we need {np.argmax(cumulative_variance_ratio >= 0.8) + 1} principal components.")
+        st.write(f"3. To capture 95% of the variance, we need {np.argmax(cumulative_variance_ratio >= 0.95) + 1} principal components.")
 
-    # Select number of components
-    suggested_components = np.argmax(cumulative_variance_ratio >= 0.8) + 1
-    n_components = st.slider("Select number of principal components:", min_value=2, max_value=len(selected_features), value=min(suggested_components, 10))
-    pca = PCA(n_components=n_components)
-    X_pca = pca.fit_transform(X_scaled)
+        # Select number of components
+        suggested_components = np.argmax(cumulative_variance_ratio >= 0.8) + 1
+        n_components = st.slider("Select number of principal components:", min_value=2, max_value=len(selected_features), value=min(suggested_components, 10))
+        pca = PCA(n_components=n_components)
+        X_pca = pca.fit_transform(X_scaled)
 
-    st.write(f"You've selected {n_components} principal components, which together explain {cumulative_variance_ratio[n_components-1]:.2%} of the total variance in the data.")
+        st.write(f"You've selected {n_components} principal components, which together explain {cumulative_variance_ratio[n_components-1]:.2%} of the total variance in the data.")
 
-    # Elbow method for K-means
-    max_clusters = min(10, X_pca.shape[0] - 1)
-    inertias = []
-    silhouette_scores = []
-    K = range(2, max_clusters + 1)
-    for k in K:
-        kmeans = KMeans(n_clusters=k, random_state=42)
-        kmeans.fit(X_pca)
-        inertias.append(kmeans.inertia_)
-        silhouette_scores.append(silhouette_score(X_pca, kmeans.labels_))
+        # Elbow method for K-means
+        max_clusters = min(10, X_pca.shape[0] - 1)
+        inertias = []
+        silhouette_scores = []
+        K = range(2, max_clusters + 1)
+        for k in K:
+            kmeans = KMeans(n_clusters=k, random_state=42)
+            kmeans.fit(X_pca)
+            inertias.append(kmeans.inertia_)
+            silhouette_scores.append(silhouette_score(X_pca, kmeans.labels_))
 
-    # Calculate elbow point
-    elbow_point = K[np.argmax(np.diff(np.diff(inertias))) + 1]
+        # Calculate elbow point
+        elbow_point = K[np.argmax(np.diff(np.diff(inertias))) + 1]
 
-    # Plot Elbow curve and Silhouette scores
-    fig_elbow = go.Figure()
-    fig_elbow.add_trace(go.Scatter(x=list(K), y=inertias, mode='lines+markers', name='Inertia',
-                                   line=dict(color='rgb(255, 75, 75)')))  # Light Streamlit red
-    fig_elbow.add_trace(go.Scatter(x=list(K), y=silhouette_scores, mode='lines+markers', name='Silhouette Score',
-                                   line=dict(color='rgb(255, 0, 0)'), yaxis='y2'))  # Dark Streamlit red
-    fig_elbow.update_layout(title='Elbow Method and Silhouette Scores',
-                            xaxis_title='Number of Clusters (k)',
-                            yaxis_title='Inertia',
-                            yaxis2=dict(title='Silhouette Score', overlaying='y', side='right'))
-    st.plotly_chart(fig_elbow)
+        # Plot Elbow curve and Silhouette scores
+        fig_elbow = go.Figure()
+        fig_elbow.add_trace(go.Scatter(x=list(K), y=inertias, mode='lines+markers', name='Inertia',
+                                    line=dict(color='rgb(255, 75, 75)')))  # Light Streamlit red
+        fig_elbow.add_trace(go.Scatter(x=list(K), y=silhouette_scores, mode='lines+markers', name='Silhouette Score',
+                                    line=dict(color='rgb(255, 0, 0)'), yaxis='y2'))  # Dark Streamlit red
+        fig_elbow.update_layout(title='Elbow Method and Silhouette Scores',
+                                xaxis_title='Number of Clusters (k)',
+                                yaxis_title='Inertia',
+                                yaxis2=dict(title='Silhouette Score', overlaying='y', side='right'))
+        st.plotly_chart(fig_elbow)
 
-    # Clustering Insights
-    st.subheader("Clustering Insights:")
-    max_silhouette = K[np.argmax(silhouette_scores)]
-    st.write(f"1. The elbow method suggests {elbow_point} as an optimal number of clusters. This is where adding more clusters doesn't significantly reduce the inertia (within-cluster sum of squares).")
-    st.write(f"2. The highest silhouette score is achieved with {max_silhouette} clusters. The silhouette score measures how similar an object is to its own cluster compared to other clusters.")
-    st.write(f"3. Consider using {elbow_point} or {max_silhouette} clusters for your analysis, or experiment with values in between. The best choice may depend on your specific needs and domain knowledge.")
+        # Clustering Insights
+        st.subheader("Clustering Insights:")
+        max_silhouette = K[np.argmax(silhouette_scores)]
+        st.write(f"1. The elbow method suggests {elbow_point} as an optimal number of clusters. This is where adding more clusters doesn't significantly reduce the inertia (within-cluster sum of squares).")
+        st.write(f"2. The highest silhouette score is achieved with {max_silhouette} clusters. The silhouette score measures how similar an object is to its own cluster compared to other clusters.")
+        st.write(f"3. Consider using {elbow_point} or {max_silhouette} clusters for your analysis, or experiment with values in between. The best choice may depend on your specific needs and domain knowledge.")
 
-    # K-means clustering
-    suggested_clusters = (elbow_point + max_silhouette) // 2
-    n_clusters = st.slider("Select number of clusters (K):", min_value=2, max_value=max_clusters, value=suggested_clusters)
-    kmeans = KMeans(n_clusters=n_clusters, random_state=42)
-    cluster_labels = kmeans.fit_predict(X_pca)
+        # K-means clustering
+        suggested_clusters = (elbow_point + max_silhouette) // 2
+        n_clusters = st.slider("Select number of clusters (K):", min_value=2, max_value=max_clusters, value=suggested_clusters)
+        kmeans = KMeans(n_clusters=n_clusters, random_state=42)
+        cluster_labels = kmeans.fit_predict(X_pca)
 
-    # 3D PCA plot
-    if n_components >= 3:
-        fig_3d = px.scatter_3d(x=X_pca[:, 0], y=X_pca[:, 1], z=X_pca[:, 2],
-                               color=cluster_labels,
-                               labels={'x': 'PC1', 'y': 'PC2', 'z': 'PC3'},
-                               title="3D PCA Plot with Clusters",
-                               color_continuous_scale='Reds')  # Using shades of red
-        st.plotly_chart(fig_3d)
+        # 3D PCA plot
+        if n_components >= 3:
+            fig_3d = px.scatter_3d(x=X_pca[:, 0], y=X_pca[:, 1], z=X_pca[:, 2],
+                                color=cluster_labels,
+                                labels={'x': 'PC1', 'y': 'PC2', 'z': 'PC3'},
+                                title="3D PCA Plot with Clusters",
+                                color_continuous_scale='Reds')  # Using shades of red
+            st.plotly_chart(fig_3d)
 
-    # 2D PCA scatter plot
-    fig_2d = px.scatter(x=X_pca[:, 0], y=X_pca[:, 1], color=cluster_labels,
-                        labels={'x': 'First Principal Component', 'y': 'Second Principal Component'},
-                        title="2D PCA Scatter Plot with Clusters",
+        # 2D PCA scatter plot
+        fig_2d = px.scatter(x=X_pca[:, 0], y=X_pca[:, 1], color=cluster_labels,
+                            labels={'x': 'First Principal Component', 'y': 'Second Principal Component'},
+                            title="2D PCA Scatter Plot with Clusters",
+                            color_continuous_scale='Reds')  # Using shades of red
+        st.plotly_chart(fig_2d)
+
+        # Cluster size information
+        cluster_sizes = pd.Series(cluster_labels).value_counts().sort_index()
+        fig_sizes = px.bar(x=cluster_sizes.index, y=cluster_sizes.values, 
+                        labels={'x': 'Cluster', 'y': 'Number of Data Points'},
+                        title="Cluster Sizes",
+                        color=cluster_sizes.index,
                         color_continuous_scale='Reds')  # Using shades of red
-    st.plotly_chart(fig_2d)
+        st.plotly_chart(fig_sizes)
 
-    # Cluster size information
-    cluster_sizes = pd.Series(cluster_labels).value_counts().sort_index()
-    fig_sizes = px.bar(x=cluster_sizes.index, y=cluster_sizes.values, 
-                       labels={'x': 'Cluster', 'y': 'Number of Data Points'},
-                       title="Cluster Sizes",
-                       color=cluster_sizes.index,
-                       color_continuous_scale='Reds')  # Using shades of red
-    st.plotly_chart(fig_sizes)
+        st.subheader("Cluster Size Insights:")
+        st.write(f"1. The largest cluster contains {cluster_sizes.max()} data points.")
+        st.write(f"2. The smallest cluster contains {cluster_sizes.min()} data points.")
+        if cluster_sizes.min() / cluster_sizes.max() < 0.1:
+            st.write("3. There's a significant imbalance in cluster sizes. This could indicate outliers, or that some clusters represent rare but important subgroups in your data.")
+            st.write("   Consider investigating why some clusters are much smaller, or try adjusting the number of clusters.")
+        else:
+            st.write("3. The cluster sizes are relatively balanced, which is often a good sign in clustering analysis.")
 
-    st.subheader("Cluster Size Insights:")
-    st.write(f"1. The largest cluster contains {cluster_sizes.max()} data points.")
-    st.write(f"2. The smallest cluster contains {cluster_sizes.min()} data points.")
-    if cluster_sizes.min() / cluster_sizes.max() < 0.1:
-        st.write("3. There's a significant imbalance in cluster sizes. This could indicate outliers, or that some clusters represent rare but important subgroups in your data.")
-        st.write("   Consider investigating why some clusters are much smaller, or try adjusting the number of clusters.")
-    else:
-        st.write("3. The cluster sizes are relatively balanced, which is often a good sign in clustering analysis.")
+        # Display cluster centers
+        pca_components = pca.components_
+        cluster_centers = kmeans.cluster_centers_
+        feature_importance = pd.DataFrame(
+            np.abs(pca_components.T.dot(cluster_centers.T)),
+            columns=[f'Cluster {i+1}' for i in range(n_clusters)],
+            index=selected_features
+        )
+        st.markdown("**Feature Importance in Clusters**")
+        st.write(feature_importance)
+        # Heatmap of cluster centers
+        fig_heatmap = px.imshow(feature_importance, 
+                                labels=dict(x="Clusters", y="Features", color="Absolute Importance"),
+                                title="Heatmap of Feature Importance in Clusters",color_continuous_scale='Reds')
+        st.plotly_chart(fig_heatmap)
 
-    # Display cluster centers
-    pca_components = pca.components_
-    cluster_centers = kmeans.cluster_centers_
-    feature_importance = pd.DataFrame(
-        np.abs(pca_components.T.dot(cluster_centers.T)),
-        columns=[f'Cluster {i+1}' for i in range(n_clusters)],
-        index=selected_features
-    )
-    st.markdown("**Feature Importance in Clusters**")
-    st.write(feature_importance)
-    # Heatmap of cluster centers
-    fig_heatmap = px.imshow(feature_importance, 
-                            labels=dict(x="Clusters", y="Features", color="Absolute Importance"),
-                            title="Heatmap of Feature Importance in Clusters",color_continuous_scale='Reds')
-    st.plotly_chart(fig_heatmap)
+        st.markdown("**Feature Importance Insights**")
+        for cluster in range(n_clusters):
+            top_feature = feature_importance[f'Cluster {cluster+1}'].idxmax()
+            st.write(f"Cluster {cluster+1} is most influenced by the feature: {top_feature}")
 
-    st.markdown("**Feature Importance Insights**")
-    for cluster in range(n_clusters):
-        top_feature = feature_importance[f'Cluster {cluster+1}'].idxmax()
-        st.write(f"Cluster {cluster+1} is most influenced by the feature: {top_feature}")
-
-    st.subheader("Overall Insights and Recommendations:")
-    st.write(f"1. Dimensionality Reduction: The PCA analysis has reduced the dimensionality of the data from {len(selected_features)} to {n_components} principal components, while still explaining {cumulative_variance_ratio[n_components-1]:.2%} of the total variance.")
-    st.write(f"2. Clustering: The K-means algorithm has divided the data into {n_clusters} clusters based on these principal components.")
-    st.write(f"3. Optimal Clusters: The analysis suggests that the optimal number of clusters is between {elbow_point} (elbow method) and {max_silhouette} (silhouette score). You're currently using {n_clusters} clusters.")
+        st.subheader("Overall Insights and Recommendations:")
+        st.write(f"1. Dimensionality Reduction: The PCA analysis has reduced the dimensionality of the data from {len(selected_features)} to {n_components} principal components, while still explaining {cumulative_variance_ratio[n_components-1]:.2%} of the total variance.")
+        st.write(f"2. Clustering: The K-means algorithm has divided the data into {n_clusters} clusters based on these principal components.")
+        st.write(f"3. Optimal Clusters: The analysis suggests that the optimal number of clusters is between {elbow_point} (elbow method) and {max_silhouette} (silhouette score). You're currently using {n_clusters} clusters.")
+    except Exception as e:
+        st.warning("PCA does not accept missing values encoded as NaN natively. Please remove those entries and retry.")
 
 if __name__ == "__main__":
     main()
