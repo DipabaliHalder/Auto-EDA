@@ -74,8 +74,6 @@ def main():
 
         - **Dataset Info**: Provides an overview of the dataset, including the first few rows, data types, and shape.
 
-        - **Missing & Duplicate Value Check**: Identifies missing values and checks for duplicate entries in the dataset.
-
         - **Summary Statistics**: Displays summary statistics for numeric columns, including count, mean, median, and standard deviation.
 
         - **Univariate Analysis**: Analyzes individual columns through histograms and box plots, providing insights into their distributions.
