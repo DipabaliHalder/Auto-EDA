@@ -21,8 +21,12 @@ st.set_page_config(page_title="Auto EDA App", layout="wide")
 def load_data(file):
     if file.name.endswith('.csv'):
         df = pd.read_csv(file)
+        df.dropna(inplace=True)
+        df.drop_duplicates()
     elif file.name.endswith(('.xls', '.xlsx')):
         df = pd.read_excel(file)
+        df.dropna(inplace=True)
+        df.drop_duplicates()
     else:
         st.error("Unsupported file format. Please upload a CSV or Excel file.")
         return None
@@ -38,7 +42,7 @@ def main():
         df = load_data(uploaded_file)
         if df is not None:
             options = st.sidebar.radio("Select the option:", [
-                "Dataset Info", "Missing & Duplicate Value Check", "Summary Statistics", 
+                "Dataset Info", "Summary Statistics", 
                 "Univariate Analysis", "Bivariate Analysis", "Correlation Analysis", 
                 "Feature Importance", "Word Cloud", "3D Scatter Plot", "PCA and Clustering"
             ])
@@ -46,8 +50,6 @@ def main():
             # Call the respective function based on the selected option
             if options == "Dataset Info":
                 data_overview(df)
-            elif options == "Missing & Duplicate Value Check":
-                missdup_check(df)
             elif options == "Summary Statistics":
                 summary_statistics(df)
             elif options == "Univariate Analysis":
@@ -102,50 +104,6 @@ def data_overview(df):
     with col2:
         st.subheader("Dataset Shape:")
         st.subheader(df.shape)
-
-# Missing & Duplicate Value Check
-def missdup_check(df):
-    st.header("Missing & Duplicate Value Check")
-
-    # Calculate the missing values matrix
-    missing_values_matrix = df.isnull().sum().reset_index()
-    missing_values_matrix.columns = ['Column', 'Missing Values']
-
-    # Check if there are missing values
-    if missing_values_matrix['Missing Values'].any():
-        # Create columns for side-by-side display
-        col1, col2 = st.columns(2)
-
-        with col1:
-            st.subheader("Missing Value Bar Plot")
-            # Create a bar plot to visualize the missing values
-            fig = px.bar(missing_values_matrix, x='Column', y='Missing Values', 
-                          title='Missing Values in the Dataset', 
-                          color_discrete_sequence=['#d6664d'])
-            fig.update_layout(xaxis_title='Column Name', 
-                              yaxis_title='Count of Missing Values', 
-                              xaxis_tickangle=90)
-            # Display the bar plot
-            st.plotly_chart(fig, use_container_width=True)
-
-        with col2:
-            st.subheader("Missing Values Summary")
-            # Display the missing values matrix in the second column
-            st.write(missing_values_matrix)
-    else:
-        st.subheader('There are no missing values in the dataset.')
-        st.write(missing_values_matrix)
-
-    # Check for duplicate rows
-    duplicate_rows = df.duplicated().sum()
-
-    # Display the duplicate rows
-    if duplicate_rows > 0:
-        st.subheader('Duplicate Rows:')
-        st.write(df[df.duplicated()])
-    else:
-        st.subheader('No duplicate entries.')
-    
 
 # Summary Statistics
 def summary_statistics(df):
